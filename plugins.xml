@@ -1,0 +1,11 @@
+<?xml version="1.0"?>
+<library format="2" path="jeeves_temporal_obstacle_layer_lib">
+  <class type="jeeves_temporal_obstacle_layer::TemporalObstacleLayer"
+         base_class_type="nav2_costmap_2d::Layer">
+    <description>
+      A Nav2 costmap layer that extends ObstacleLayer with temporal decay.
+      Obstacles persist for a configurable duration and are automatically cleared if not re-observed.
+      Supports intensity-field annotation for per-point clearing control.
+    </description>
+  </class>
+</library>

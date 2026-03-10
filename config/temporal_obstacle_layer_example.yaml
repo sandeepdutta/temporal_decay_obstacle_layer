@@ -1,0 +1,38 @@
+# Example configuration for TemporalObstacleLayer
+#
+# Intensity field annotation:
+# - intensity >= 0.0: delayed clearing (default)
+# - intensity < 0.0: immediate clearing
+
+global_costmap:
+  global_costmap:
+    ros__parameters:
+      always_send_full_costmap: True
+      plugins: ["static_layer", "temporal_obstacle_layer", "inflation_layer"]
+
+      static_layer:
+        plugin: nav2_costmap_2d::StaticLayer
+        map_subscribe_transient_local: True
+
+      temporal_obstacle_layer:
+        plugin: jeeves_temporal_obstacle_layer/TemporalObstacleLayer
+        enabled: True
+        max_obstacle_age: 2.0
+
+        observation_sources: camera
+
+        camera:
+          topic: /camera/point_cloud
+          data_type: PointCloud2
+          marking: true
+          clearing: false
+          obstacle_max_range: 5.0
+          observation_persistence: 0.0
+          expected_update_rate: 0.0
+          min_obstacle_height: 0.1
+          max_obstacle_height: 2.0
+
+      inflation_layer:
+        plugin: nav2_costmap_2d::InflationLayer
+        cost_scaling_factor: 10.0
+        inflation_radius: 0.3
