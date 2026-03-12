@@ -65,56 +65,122 @@ void TemporalObstacleLayer::reset() {
 void TemporalObstacleLayer::updateCosts(
   nav2_costmap_2d::Costmap2D & master_grid,
   int min_i, int min_j, int max_i, int max_j) {
-  // First, apply temporal decay to age out old obstacles
+  rclcpp::Time now = clock_->now();
   double tmp_min_x = min_i;
   double tmp_min_y = min_j;
   double tmp_max_x = max_i;
   double tmp_max_y = max_j;
 
+  // Step 1: Apply temporal decay - clear old obstacles
   decayObstacles(&tmp_min_x, &tmp_min_y, &tmp_max_x, &tmp_max_y);
 
-  // Process marking observations to track intensity values and current marked cells
+  // Step 2: Get marking observations and process them
   std::vector<nav2_costmap_2d::Observation> marking_observations;
   getMarkingObservations(marking_observations);
 
-  rclcpp::Time now = clock_->now();
   unsigned char * costmap = getCharMap();
 
-  // Build map of cells that should be marked from current observations
-  std::map<unsigned int, rclcpp::Time> current_markings;
-
-  // Process each marking observation and track intensity
+  // Process each marking observation
   for (const auto & obs : marking_observations) {
-    markObstaclesWithIntensity(obs, &tmp_min_x, &tmp_min_y, &tmp_max_x, &tmp_max_y);
-    extractMarkedCells(obs, current_markings, now);
-  }
+    const sensor_msgs::msg::PointCloud2 & cloud = *(obs.cloud_);
 
-  // Then call parent updateCosts to handle clearing and normal flow (with raytracing enabled)
-  ObstacleLayer::updateCosts(master_grid, min_i, min_j, max_i, max_j);
+    // Get sensor origin in map coords
+    unsigned int x0, y0;
+    if (!worldToMap(obs.origin_.x, obs.origin_.y, x0, y0)) {
+      continue;
+    }
 
-  // After parent clears via raytracing, restore obstacles within their temporal window
-  // This preserves temporal decay while allowing spatial clearing via raytracing
-  for (const auto & [cell_index, mark_time] : current_markings) {
-    double age = (now - mark_time).seconds();
-    bool exceeds_max_age = (max_obstacle_age_seconds_ > 0.0) &&
-                          (age > max_obstacle_age_seconds_);
+    // Set up iterators
+    sensor_msgs::PointCloud2ConstIterator<float> iter_x(cloud, "x");
+    sensor_msgs::PointCloud2ConstIterator<float> iter_y(cloud, "y");
+    sensor_msgs::PointCloud2ConstIterator<float> iter_z(cloud, "z");
 
-    // Re-mark cell if it hasn't exceeded max age and isn't using immediate clearing
-    if (!exceeds_max_age) {
-      bool uses_immediate_clearing = false;
-      if (cell_clearing_mode_.find(cell_index) != cell_clearing_mode_.end()) {
-        uses_immediate_clearing = cell_clearing_mode_[cell_index];
+    // Check for intensity field
+    bool has_intensity = false;
+    sensor_msgs::PointCloud2ConstIterator<float> iter_intensity(cloud, "intensity");
+    try {
+      if (iter_intensity != iter_intensity.end()) {
+        has_intensity = true;
       }
+    } catch (...) {
+      has_intensity = false;
+    }
 
-      // Re-mark if using delayed clearing
-      if (!uses_immediate_clearing) {
-        costmap[cell_index] = LETHAL_OBSTACLE;
+    const unsigned int max_range_cells = cellDistance(obs.obstacle_max_range_);
+    const unsigned int min_range_cells = cellDistance(obs.obstacle_min_range_);
+    const double min_obstacle_height = min_obstacle_height_;
+    const double max_obstacle_height = max_obstacle_height_;
+
+    // Process each point
+    for (; iter_x != iter_x.end(); ++iter_x, ++iter_y, ++iter_z) {
+      double px = *iter_x, py = *iter_y, pz = *iter_z;
+
+      if (has_intensity) {
+        float intensity = *iter_intensity;
+        ++iter_intensity;
+
+        // Filter by height
+        if (pz < min_obstacle_height || pz > max_obstacle_height) {
+          continue;
+        }
+
+        // Get map coordinates
+        unsigned int mx, my;
+        if (!worldToMap(px, py, mx, my)) {
+          continue;
+        }
+
+        // Check range
+        const int dx = static_cast<int>(mx) - static_cast<int>(x0);
+        const int dy = static_cast<int>(my) - static_cast<int>(y0);
+        const unsigned int dist = static_cast<unsigned int>(
+          std::hypot(static_cast<double>(dx), static_cast<double>(dy)));
+
+        if (dist > max_range_cells || dist < min_range_cells) {
+          continue;
+        }
+
+        // Mark cell with timestamp and intensity info
+        unsigned int cell_index = getIndex(mx, my);
+        markObstacleCell(cell_index, intensity, now);
 
         // Update bounds
-        unsigned int x, y;
-        indexToCells(cell_index, x, y);
         double wx, wy;
-        mapToWorld(x, y, wx, wy);
+        mapToWorld(mx, my, wx, wy);
+        tmp_min_x = std::min(wx, tmp_min_x);
+        tmp_min_y = std::min(wy, tmp_min_y);
+        tmp_max_x = std::max(wx, tmp_max_x);
+        tmp_max_y = std::max(wy, tmp_max_y);
+      } else {
+        // No intensity - process as before
+        // Filter by height
+        if (pz < min_obstacle_height || pz > max_obstacle_height) {
+          continue;
+        }
+
+        // Get map coordinates
+        unsigned int mx, my;
+        if (!worldToMap(px, py, mx, my)) {
+          continue;
+        }
+
+        // Check range
+        const int dx = static_cast<int>(mx) - static_cast<int>(x0);
+        const int dy = static_cast<int>(my) - static_cast<int>(y0);
+        const unsigned int dist = static_cast<unsigned int>(
+          std::hypot(static_cast<double>(dx), static_cast<double>(dy)));
+
+        if (dist > max_range_cells || dist < min_range_cells) {
+          continue;
+        }
+
+        // Mark cell with timestamp (no intensity, so default to delayed clearing)
+        unsigned int cell_index = getIndex(mx, my);
+        markObstacleCell(cell_index, 0.0f, now);
+
+        // Update bounds
+        double wx, wy;
+        mapToWorld(mx, my, wx, wy);
         tmp_min_x = std::min(wx, tmp_min_x);
         tmp_min_y = std::min(wy, tmp_min_y);
         tmp_max_x = std::max(wx, tmp_max_x);
@@ -123,153 +189,57 @@ void TemporalObstacleLayer::updateCosts(
     }
   }
 
-  // Track newly marked cells that weren't already tracked
-  for (unsigned int i = 0; i < getSizeInCellsX() * getSizeInCellsY(); ++i) {
-    if (costmap[i] == LETHAL_OBSTACLE) {
-      if (obstacle_birth_time_.find(i) == obstacle_birth_time_.end()) {
-        obstacle_birth_time_[i] = now;
-        // Default to delayed clearing if not explicitly set
-        if (cell_clearing_mode_.find(i) == cell_clearing_mode_.end()) {
-          cell_clearing_mode_[i] = false;
-        }
-      }
-    }
-  }
+  // Call parent to handle clearing observations (raytracing) only
+  // Parent will use our tracking info to avoid clearing obstacles within temporal window
+  ObstacleLayer::updateCosts(master_grid, min_i, min_j, max_i, max_j);
 }
 
-void TemporalObstacleLayer::extractMarkedCells(
-  const nav2_costmap_2d::Observation & obs,
-  std::map<unsigned int, rclcpp::Time> & marked_cells,
+void TemporalObstacleLayer::markObstacleCell(
+  unsigned int cell_index,
+  float intensity,
   const rclcpp::Time & now) {
-  const sensor_msgs::msg::PointCloud2 & cloud = *(obs.cloud_);
+  unsigned char * costmap = getCharMap();
 
-  // Get sensor origin in map coords
-  unsigned int x0, y0;
-  if (!worldToMap(obs.origin_.x, obs.origin_.y, x0, y0)) {
-    return;
-  }
+  // Determine clearing mode from intensity
+  bool use_immediate_clearing = isImmediateClearingPoint(intensity);
 
-  sensor_msgs::PointCloud2ConstIterator<float> iter_x(cloud, "x");
-  sensor_msgs::PointCloud2ConstIterator<float> iter_y(cloud, "y");
-  sensor_msgs::PointCloud2ConstIterator<float> iter_z(cloud, "z");
+  // Mark the cell as lethal obstacle
+  costmap[cell_index] = LETHAL_OBSTACLE;
 
-  const unsigned int max_range_cells = cellDistance(obs.obstacle_max_range_);
-  const unsigned int min_range_cells = cellDistance(obs.obstacle_min_range_);
-  const double min_obstacle_height = min_obstacle_height_;
-  const double max_obstacle_height = max_obstacle_height_;
-
-  // Process each point in the cloud
-  for (; iter_x != iter_x.end(); ++iter_x, ++iter_y, ++iter_z) {
-    double px = *iter_x, py = *iter_y, pz = *iter_z;
-
-    // Filter by height
-    if (pz < min_obstacle_height || pz > max_obstacle_height) {
-      continue;
-    }
-
-    // Get map coordinates
-    unsigned int mx, my;
-    if (!worldToMap(px, py, mx, my)) {
-      continue;
-    }
-
-    // Check range
-    const int dx = static_cast<int>(mx) - static_cast<int>(x0);
-    const int dy = static_cast<int>(my) - static_cast<int>(y0);
-    const unsigned int dist = static_cast<unsigned int>(
-      std::hypot(static_cast<double>(dx), static_cast<double>(dy)));
-
-    if (dist > max_range_cells || dist < min_range_cells) {
-      continue;
-    }
-
-    // Add to marked cells
-    unsigned int cell_index = getIndex(mx, my);
-    marked_cells[cell_index] = now;
-  }
+  // Track timestamp and clearing mode
+  obstacle_birth_time_[cell_index] = now;
+  cell_clearing_mode_[cell_index] = use_immediate_clearing;
 }
 
-void TemporalObstacleLayer::markObstaclesWithIntensity(
-  const nav2_costmap_2d::Observation & obs,
-  double * min_x, double * min_y, double * max_x, double * max_y) {
-  const sensor_msgs::msg::PointCloud2 & cloud = *(obs.cloud_);
-  rclcpp::Time now = clock_->now();
-
-  // Get sensor origin in map coords
-  unsigned int x0, y0;
-  if (!worldToMap(obs.origin_.x, obs.origin_.y, x0, y0)) {
-    return;
+bool TemporalObstacleLayer::shouldClearCell(
+  unsigned int cell_index,
+  const rclcpp::Time & now) {
+  // Check if cell is tracked
+  auto it = obstacle_birth_time_.find(cell_index);
+  if (it == obstacle_birth_time_.end()) {
+    // Not tracked - allow parent to clear it
+    return true;
   }
 
-  // Check if point cloud has intensity field
-  sensor_msgs::PointCloud2ConstIterator<float> iter_x(cloud, "x");
-  sensor_msgs::PointCloud2ConstIterator<float> iter_y(cloud, "y");
-  sensor_msgs::PointCloud2ConstIterator<float> iter_z(cloud, "z");
-
-  // Try to get intensity iterator (may not exist)
-  bool has_intensity = false;
-  sensor_msgs::PointCloud2ConstIterator<float> iter_intensity(cloud, "intensity");
-  try {
-    // If iterator is valid, we have intensity
-    if (iter_intensity != iter_intensity.end()) {
-      has_intensity = true;
-    }
-  } catch (...) {
-    has_intensity = false;
+  // Check clearing mode
+  bool uses_immediate_clearing = false;
+  auto mode_it = cell_clearing_mode_.find(cell_index);
+  if (mode_it != cell_clearing_mode_.end()) {
+    uses_immediate_clearing = mode_it->second;
   }
 
-  const unsigned int max_range_cells = cellDistance(obs.obstacle_max_range_);
-  const unsigned int min_range_cells = cellDistance(obs.obstacle_min_range_);
-  const double min_obstacle_height = min_obstacle_height_;
-  const double max_obstacle_height = max_obstacle_height_;
-
-  // Process each point in the cloud
-  for (; iter_x != iter_x.end(); ++iter_x, ++iter_y, ++iter_z) {
-    double px = *iter_x, py = *iter_y, pz = *iter_z;
-
-    // Filter by height
-    if (pz < min_obstacle_height || pz > max_obstacle_height) {
-      continue;
-    }
-
-    // Get map coordinates
-    unsigned int mx, my;
-    if (!worldToMap(px, py, mx, my)) {
-      continue;
-    }
-
-    // Check range
-    const int dx = static_cast<int>(mx) - static_cast<int>(x0);
-    const int dy = static_cast<int>(my) - static_cast<int>(y0);
-    const unsigned int dist = static_cast<unsigned int>(
-      std::hypot(static_cast<double>(dx), static_cast<double>(dy)));
-
-    if (dist > max_range_cells || dist < min_range_cells) {
-      continue;
-    }
-
-    // Determine clearing mode from intensity
-    bool use_immediate_clearing = false;
-    if (has_intensity) {
-      float intensity = *iter_intensity;
-      use_immediate_clearing = isImmediateClearingPoint(intensity);
-
-      RCLCPP_DEBUG(
-        logger_,
-        "Point at (%.2f, %.2f) intensity=%.2f: %s",
-        px, py, intensity,
-        use_immediate_clearing ? "immediate clearing" : "delayed clearing");
-    }
-
-    // Track this cell
-    unsigned int cell_index = getIndex(mx, my);
-    cell_clearing_mode_[cell_index] = use_immediate_clearing;
-    obstacle_birth_time_[cell_index] = now;
-
-    if (has_intensity) {
-      ++iter_intensity;
-    }
+  // If uses immediate clearing, allow parent to clear it
+  if (uses_immediate_clearing) {
+    return true;
   }
+
+  // Check age
+  double age = (now - it->second).seconds();
+  bool exceeds_max_age = (max_obstacle_age_seconds_ > 0.0) &&
+                         (age > max_obstacle_age_seconds_);
+
+  // Only allow clearing if exceeded max age
+  return exceeds_max_age;
 }
 
 void TemporalObstacleLayer::decayObstacles(

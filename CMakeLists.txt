@@ -1,8 +1,14 @@
 cmake_minimum_required(VERSION 3.16)
 project(jeeves_temporal_obstacle_layer)
 
+set(CMAKE_BUILD_TYPE Release)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+# Release optimizations
+if(CMAKE_BUILD_TYPE STREQUAL Release)
+  add_compile_options(-O3 -march=native -DNDEBUG)
+endif()
 
 find_package(ament_cmake REQUIRED)
 find_package(nav2_costmap_2d REQUIRED)

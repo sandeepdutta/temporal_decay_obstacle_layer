@@ -58,29 +58,26 @@ public:
 protected:
   /**
    * @brief Apply temporal decay to old obstacle markings
+   * Clears obstacles that exceeded max_obstacle_age_seconds_
    * @param min_x, min_y, max_x, max_y Update bounds
    */
   void decayObstacles(double * min_x, double * min_y, double * max_x, double * max_y);
 
   /**
-   * @brief Mark cells from observations, tracking intensity values
-   * @param obs Observation with point cloud
-   * @param min_x, min_y, max_x, max_y Update bounds
+   * @brief Mark obstacle cell with timestamp and intensity tracking
+   * @param cell_index Cell index to mark
+   * @param intensity Point intensity value (for clearing mode determination)
+   * @param now Current timestamp
    */
-  void markObstaclesWithIntensity(
-    const nav2_costmap_2d::Observation & obs,
-    double * min_x, double * min_y, double * max_x, double * max_y);
+  void markObstacleCell(unsigned int cell_index, float intensity, const rclcpp::Time & now);
 
   /**
-   * @brief Extract cell indices from observation that should be marked
-   * @param obs Observation with point cloud
-   * @param marked_cells Output map of cell indices -> birth time
-   * @param now Current time
+   * @brief Check if a cell can be cleared based on its age and clearing mode
+   * @param cell_index Cell index to check
+   * @param now Current timestamp
+   * @return true if cell can be cleared (exceeds max age or uses immediate clearing)
    */
-  void extractMarkedCells(
-    const nav2_costmap_2d::Observation & obs,
-    std::map<unsigned int, rclcpp::Time> & marked_cells,
-    const rclcpp::Time & now);
+  bool shouldClearCell(unsigned int cell_index, const rclcpp::Time & now);
 
   /**
    * @brief Check if intensity indicates delayed clearing should be disabled
