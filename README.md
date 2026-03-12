@@ -17,7 +17,7 @@ A custom Nav2 costmap layer that extends the standard `ObstacleLayer` with tempo
 You have a camera with limited FOV:
 1. Camera marks an obstacle ✓
 2. Camera rotates/moves away, obstacle now **out of view**
-3. Standard ObstacleLayer immediately **clears it via raycasting** ✗
+3. Standard ObstacleLayer immediately **if the clearing : true** ✗
 4. Robot doesn't know the obstacle might still be there
 
 **Solution**: Keep the obstacle marking for a few seconds even after the camera looks away.
