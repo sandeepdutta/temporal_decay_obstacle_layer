@@ -1,17 +1,17 @@
 <?xml version="1.0"?>
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
-  <name>jeeves_temporal_obstacle_layer</name>
+  <name>temporal_decay_obstacle_layer</name>
   <version>0.1.0</version>
   <description>
     A custom Nav2 costmap layer with temporal decay and intensity-based clearing control.
     Useful for camera-based obstacle detection with limited FOV.
   </description>
 
-  <maintainer email="jeeves@example.com">Jeeves</maintainer>
+  <maintainer email="sandeep@@harmony-robotics.com">Sandeep Dutta</maintainer>
   <license>BSD-3-Clause</license>
 
-  <url type="repository">https://github.com/jeeves/jeeves_temporal_obstacle_layer</url>
+  <url type="repository">https://github.com/jeeves/temporal_decay_obstacle_layer</url>
 
   <buildtool_depend>ament_cmake</buildtool_depend>
 

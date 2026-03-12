@@ -8,8 +8,8 @@
  *   - Negative intensity: immediate clearing (or no clearing)
  */
 
-#ifndef JEEVES_TEMPORAL_OBSTACLE_LAYER__TEMPORAL_OBSTACLE_LAYER_HPP_
-#define JEEVES_TEMPORAL_OBSTACLE_LAYER__TEMPORAL_OBSTACLE_LAYER_HPP_
+#ifndef TEMPORAL_DECAY_OBSTACLE_LAYER__TEMPORAL_OBSTACLE_LAYER_HPP_
+#define TEMPORAL_DECAY_OBSTACLE_LAYER__TEMPORAL_OBSTACLE_LAYER_HPP_
 
 #include <map>
 #include <memory>
@@ -19,7 +19,7 @@
 #include "nav2_costmap_2d/obstacle_layer.hpp"
 #include "rclcpp/time.hpp"
 
-namespace jeeves_temporal_obstacle_layer {
+namespace temporal_decay_obstacle_layer {
 
 /**
  * @class TemporalObstacleLayer
@@ -116,6 +116,6 @@ protected:
   rclcpp::Logger logger_{rclcpp::get_logger("temporal_obstacle_layer")};
 };
 
-}  // namespace jeeves_temporal_obstacle_layer
+}  // namespace temporal_decay_obstacle_layer
 
-#endif  // JEEVES_TEMPORAL_OBSTACLE_LAYER__TEMPORAL_OBSTACLE_LAYER_HPP_
+#endif  // TEMPORAL_DECAY_OBSTACLE_LAYER__TEMPORAL_OBSTACLE_LAYER_HPP_

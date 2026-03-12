@@ -2,7 +2,7 @@
  * Temporal Obstacle Layer with Intensity-based Clearing Control
  */
 
-#include "jeeves_temporal_obstacle_layer/temporal_obstacle_layer.hpp"
+#include "temporal_decay_obstacle_layer/temporal_obstacle_layer.hpp"
 
 #include <algorithm>
 #include <memory>
@@ -14,14 +14,14 @@
 #include "nav2_costmap_2d/costmap_math.hpp"
 
 PLUGINLIB_EXPORT_CLASS(
-  jeeves_temporal_obstacle_layer::TemporalObstacleLayer,
+  temporal_decay_obstacle_layer::TemporalObstacleLayer,
   nav2_costmap_2d::Layer)
 
 using nav2_costmap_2d::NO_INFORMATION;
 using nav2_costmap_2d::LETHAL_OBSTACLE;
 using nav2_costmap_2d::FREE_SPACE;
 
-namespace jeeves_temporal_obstacle_layer {
+namespace temporal_decay_obstacle_layer {
 
 TemporalObstacleLayer::TemporalObstacleLayer() {}
 
@@ -300,4 +300,4 @@ void TemporalObstacleLayer::decayObstacles(
   }
 }
 
-}  // namespace jeeves_temporal_obstacle_layer
+}  // namespace temporal_decay_obstacle_layer

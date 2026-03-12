@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
-<library format="2" path="jeeves_temporal_obstacle_layer_lib">
-  <class type="jeeves_temporal_obstacle_layer::TemporalObstacleLayer"
+<library format="2" path="temporal_decay_obstacle_layer_lib">
+  <class type="temporal_decay_obstacle_layer::TemporalObstacleLayer"
          base_class_type="nav2_costmap_2d::Layer">
     <description>
       A Nav2 costmap layer that extends ObstacleLayer with temporal decay.
