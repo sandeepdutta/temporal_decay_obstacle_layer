@@ -1,9 +1,9 @@
 #include <gtest/gtest.h>
 #include <memory>
 
-#include "jeeves_temporal_obstacle_layer/temporal_obstacle_layer.hpp"
+#include "temporal_decay_obstacle_layer/temporal_obstacle_layer.hpp"
 
-using namespace jeeves_temporal_obstacle_layer;
+using namespace temporal_decay_obstacle_layer;
 
 /**
  * @brief Basic test suite for TemporalObstacleLayer

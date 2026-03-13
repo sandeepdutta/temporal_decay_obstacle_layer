@@ -106,6 +106,11 @@ protected:
   double max_obstacle_age_seconds_;
 
   /**
+   * @brief Whether to use intensity field for clearing control
+   */
+  bool use_intensity_field_;
+
+  /**
    * @brief Clock for getting current time
    */
   rclcpp::Clock::SharedPtr clock_;

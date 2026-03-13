@@ -15,9 +15,10 @@ global_costmap:
         map_subscribe_transient_local: True
 
       temporal_obstacle_layer:
-        plugin: jeeves_temporal_obstacle_layer/TemporalObstacleLayer
+        plugin: temporal_decay_obstacle_layer/TemporalObstacleLayer
         enabled: True
         max_obstacle_age: 2.0
+        use_intensity_field: True
 
         observation_sources: camera
 
@@ -25,7 +26,7 @@ global_costmap:
           topic: /camera/point_cloud
           data_type: PointCloud2
           marking: true
-          clearing: false
+          clearing: true
           obstacle_max_range: 5.0
           observation_persistence: 0.0
           expected_update_rate: 0.0

@@ -40,15 +40,18 @@ void TemporalObstacleLayer::onInitialize() {
 
   // Declare and get temporal parameters
   declareParameter("max_obstacle_age", rclcpp::ParameterValue(2.0));
+  declareParameter("use_intensity_field", rclcpp::ParameterValue(true));
 
   double max_age;
   node->get_parameter(name_ + "." + "max_obstacle_age", max_age);
   max_obstacle_age_seconds_ = max_age;
 
+  node->get_parameter(name_ + "." + "use_intensity_field", use_intensity_field_);
+
   RCLCPP_INFO(
     logger_,
-    "TemporalObstacleLayer initialized with max_obstacle_age=%.2f seconds",
-    max_obstacle_age_seconds_);
+    "TemporalObstacleLayer initialized with max_obstacle_age=%.2f seconds, use_intensity_field=%s",
+    max_obstacle_age_seconds_, use_intensity_field_ ? "true" : "false");
 }
 
 void TemporalObstacleLayer::reset() {
@@ -95,15 +98,17 @@ void TemporalObstacleLayer::updateCosts(
     sensor_msgs::PointCloud2ConstIterator<float> iter_y(cloud, "y");
     sensor_msgs::PointCloud2ConstIterator<float> iter_z(cloud, "z");
 
-    // Check for intensity field
+    // Check for intensity field (if enabled)
     bool has_intensity = false;
     sensor_msgs::PointCloud2ConstIterator<float> iter_intensity(cloud, "intensity");
-    try {
-      if (iter_intensity != iter_intensity.end()) {
-        has_intensity = true;
+    if (use_intensity_field_) {
+      try {
+        if (iter_intensity != iter_intensity.end()) {
+          has_intensity = true;
+        }
+      } catch (...) {
+        has_intensity = false;
       }
-    } catch (...) {
-      has_intensity = false;
     }
 
     const unsigned int max_range_cells = cellDistance(obs.obstacle_max_range_);

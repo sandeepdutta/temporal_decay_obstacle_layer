@@ -1,4 +1,4 @@
-# Temporal Obstacle Layer
+# Temporal Decay Obstacle Layer
 
 A custom Nav2 costmap layer that extends the standard `ObstacleLayer` with temporal decay and intensity-based clearing control.
 
@@ -25,7 +25,7 @@ You have a camera with limited FOV:
 ## Installation
 
 ```bash
-colcon build --packages-select jeeves_temporal_obstacle_layer
+colcon build --packages-select temporal_decay_obstacle_layer
 ```
 
 ## How It Works
@@ -36,6 +36,9 @@ Obstacles with `intensity < 0.0` clear immediately (no temporal decay).
 ## Configuration
 
 - `max_obstacle_age` (double, default: 2.0): Seconds before temporal decay
+- `use_intensity_field` (bool, default: true): Enable intensity-based clearing control
+  - When true: Uses point cloud intensity field (`intensity >= 0.0` for delayed, `< 0.0` for immediate)
+  - When false: All obstacles use delayed clearing (ignores intensity field)
 - All standard ObstacleLayer parameters apply: `observation_sources`, `marking`, `clearing`, `obstacle_max_range`, etc.
 
 
@@ -59,7 +62,7 @@ ros2 launch nav2_bringup bringup_launch.py --log-level nav2_costmap_2d:=debug
 | Obstacles disappear too quickly | Increase `max_obstacle_age` |
 | Obstacles never disappear | Decrease `max_obstacle_age` or check `clearing: true` |
 | Intensity not being read | Ensure PointCloud2 has `intensity` field as FLOAT32 |
-| Layer not loading | Check plugin name: `jeeves_temporal_obstacle_layer/TemporalObstacleLayer` |
+| Layer not loading | Check plugin name: `temporal_decay_obstacle_layer/TemporalObstacleLayer` |
 
 ## License
 
