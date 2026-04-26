@@ -1,8 +1,4 @@
 # Example configuration for TemporalObstacleLayer
-#
-# Intensity field annotation:
-# - intensity >= 0.0: delayed clearing (default)
-# - intensity < 0.0: immediate clearing
 
 global_costmap:
   global_costmap:
@@ -18,7 +14,6 @@ global_costmap:
         plugin: temporal_decay_obstacle_layer/TemporalObstacleLayer
         enabled: True
         max_obstacle_age: 2.0
-        use_intensity_field: True
 
         observation_sources: camera
 

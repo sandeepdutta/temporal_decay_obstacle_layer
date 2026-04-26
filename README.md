@@ -7,9 +7,6 @@ A custom Nav2 costmap layer that extends the standard `ObstacleLayer` with tempo
 ## Features
 
 - **Temporal Decay**: Obstacle markings automatically fade after a configurable duration
-- **Intensity Annotation**: Per-point control over clearing behavior via point cloud intensity field
-  - `intensity >= 0.0`: Delayed clearing (default, uses temporal decay)
-  - `intensity < 0.0`: Immediate clearing (no temporal decay)
 - **Drop-in Replacement**: Extends standard `ObstacleLayer`, all existing configs work
 
 ## The Problem It Solves
@@ -30,15 +27,11 @@ colcon build --packages-select temporal_decay_obstacle_layer
 
 ## How It Works
 
-Obstacles marked with `intensity >= 0.0` persist for `max_obstacle_age` seconds, then auto-clear.
-Obstacles with `intensity < 0.0` clear immediately (no temporal decay).
+All obstacles persist for `max_obstacle_age` seconds after leaving the sensor FOV, then auto-clear.
 
 ## Configuration
 
 - `max_obstacle_age` (double, default: 2.0): Seconds before temporal decay
-- `use_intensity_field` (bool, default: true): Enable intensity-based clearing control
-  - When true: Uses point cloud intensity field (`intensity >= 0.0` for delayed, `< 0.0` for immediate)
-  - When false: All obstacles use delayed clearing (ignores intensity field)
 - All standard ObstacleLayer parameters apply: `observation_sources`, `marking`, `clearing`, `obstacle_max_range`, etc.
 
 
@@ -61,7 +54,6 @@ ros2 launch nav2_bringup bringup_launch.py --log-level nav2_costmap_2d:=debug
 |---------|----------|
 | Obstacles disappear too quickly | Increase `max_obstacle_age` |
 | Obstacles never disappear | Decrease `max_obstacle_age` or check `clearing: true` |
-| Intensity not being read | Ensure PointCloud2 has `intensity` field as FLOAT32 |
 | Layer not loading | Check plugin name: `temporal_decay_obstacle_layer/TemporalObstacleLayer` |
 
 ## License

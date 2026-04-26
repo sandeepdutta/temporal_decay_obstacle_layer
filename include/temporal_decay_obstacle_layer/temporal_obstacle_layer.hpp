@@ -1,11 +1,7 @@
 /*
- * Temporal Obstacle Layer with Intensity-based Clearing Control
+ * Temporal Obstacle Layer
  *
- * Extends the standard ObstacleLayer with:
- * - Temporal decay of obstacle markings (keep markings for N seconds)
- * - Per-point clearing control via intensity field annotation
- *   - Positive intensity: delayed clearing enabled
- *   - Negative intensity: immediate clearing (or no clearing)
+ * Extends the standard ObstacleLayer with temporal decay of obstacle markings.
  */
 
 #ifndef TEMPORAL_DECAY_OBSTACLE_LAYER__TEMPORAL_OBSTACLE_LAYER_HPP_
@@ -23,15 +19,9 @@ namespace temporal_decay_obstacle_layer {
 
 /**
  * @class TemporalObstacleLayer
- * @brief Extends ObstacleLayer with temporal decay and intensity-based clearing control
- *
- * Features:
- * - Obstacles are automatically cleared after max_obstacle_age seconds
- * - Per-point intensity annotation:
- *   - intensity >= 0: Normal marking, temporal decay enabled
- *   - intensity < 0: Marking with immediate clearing (no temporal decay)
- *
- * Useful for camera-based obstacle detection with limited FOV.
+ * @brief Extends ObstacleLayer with temporal decay: obstacles are automatically
+ *        cleared after max_obstacle_age seconds. Useful for camera-based obstacle
+ *        detection with limited FOV.
  */
 class TemporalObstacleLayer : public nav2_costmap_2d::ObstacleLayer {
 public:
@@ -64,35 +54,19 @@ protected:
   void decayObstacles(double * min_x, double * min_y, double * max_x, double * max_y);
 
   /**
-   * @brief Mark obstacle cell with timestamp and intensity tracking
+   * @brief Mark obstacle cell with timestamp
    * @param cell_index Cell index to mark
-   * @param intensity Point intensity value (for clearing mode determination)
    * @param now Current timestamp
    */
-  void markObstacleCell(unsigned int cell_index, float intensity, const rclcpp::Time & now);
+  void markObstacleCell(unsigned int cell_index, const rclcpp::Time & now);
 
   /**
-   * @brief Check if a cell can be cleared based on its age and clearing mode
+   * @brief Check if a cell can be cleared based on its age
    * @param cell_index Cell index to check
    * @param now Current timestamp
-   * @return true if cell can be cleared (exceeds max age or uses immediate clearing)
+   * @return true if cell exceeds max age
    */
   bool shouldClearCell(unsigned int cell_index, const rclcpp::Time & now);
-
-  /**
-   * @brief Check if intensity indicates delayed clearing should be disabled
-   * @param intensity Intensity value from point cloud
-   * @return true if intensity is negative (disable delayed clearing)
-   */
-  inline bool isImmediateClearingPoint(float intensity) const {
-    return intensity < 0.0f;
-  }
-
-  /**
-   * @brief Track which cells should use immediate clearing vs delayed
-   * Maps cell index -> should use immediate clearing
-   */
-  std::map<unsigned int, bool> cell_clearing_mode_;
 
   /**
    * @brief Track when each cell was marked as an obstacle
@@ -101,14 +75,9 @@ protected:
   std::map<unsigned int, rclcpp::Time> obstacle_birth_time_;
 
   /**
-   * @brief Maximum age for obstacles with delayed clearing (seconds)
+   * @brief Maximum age for obstacles (seconds)
    */
   double max_obstacle_age_seconds_;
-
-  /**
-   * @brief Whether to use intensity field for clearing control
-   */
-  bool use_intensity_field_;
 
   /**
    * @brief Clock for getting current time
